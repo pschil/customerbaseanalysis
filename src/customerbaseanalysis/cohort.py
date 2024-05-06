@@ -328,16 +328,22 @@ class CohortSet:
             f"\n"
             f"Num Customers: {self.n_customers}\n"
             f"Num Orders: {self.n_orders}\n"
-            f"Total Revenue: {self.sum_revenue}\n"
-            f"Total Margin: {self.sum_margin}\n"
+            f"Total Revenue: {round(self.sum_revenue, 2)}\n"
+            f"Total Margin: {round(self.sum_margin, 2)}\n"
         )
 
     def __init__(self, cohorts: dict[str, Cohort]):
+        # Verify dict is not empty
+        if not cohorts:
+            raise ValueError("CohortSet must contain at least one cohort.")
         self.cohorts = copy.deepcopy(cohorts)
 
-    def __getitem__(self, item: str):
-        """Get a single cohort with the given name."""
-        return self.cohorts[str(item)]
+    def __getitem__(self, item: str | Iterable[str]) -> Cohort | "CohortSet":
+        """Get a cohort or a subset of cohorts by name(s)."""
+        if isinstance(item, str):
+            return self.cohorts[item]
+        else:
+            return CohortSet({k: self.cohorts[k] for k in item})
 
     @property
     def n_cohorts(self) -> int:
@@ -348,6 +354,11 @@ class CohortSet:
     def cohort_names(self) -> set[str]:
         """Names of the cohorts."""
         return set(self.cohorts.keys())
+
+    @property
+    def acq_periods(self) -> set[pd.Period]:
+        """Acquisition periods of the cohorts."""
+        return {c.acq_period for c in self.cohorts.values()}
 
     @property
     def time_first_acquisition(self) -> pd.Timestamp:
@@ -395,6 +406,42 @@ class CohortSet:
         return self.foreach_cohort(df=lambda c: c.df_acquisition)[
             ["customer_id", "cohort_name", "time_first_order"]
         ]
+
+    def select_period_acquired(
+        self,
+        lower: str | pd.Period | None = None,
+        upper: str | pd.Period | None = None,
+        between: tuple[str | pd.Period, str | pd.Period] | None = None,
+    ) -> "CohortList":
+        """Select cohorts based on the acquisition period.
+
+        Args:
+            lower: Cohorts acquired on or after this period (inclusive).
+            upper: Cohorts acquired on or before this period (inclusive).
+            between: Cohorts acquired between these periods (inclusive).
+        """
+        # Verify only one given
+        if sum([lower is not None, upper is not None, between is not None]) != 1:
+            raise ValueError("Exactly one of lower, upper, between may be given.")
+
+        if lower is not None:
+            lower = pd.Period(lower)
+            cohorts = {k: v for k, v in self.cohorts.items() if v.acq_period >= lower}
+        elif upper is not None:
+            upper = pd.Period(upper)
+            cohorts = {k: v for k, v in self.cohorts.items() if v.acq_period <= upper}
+        else:
+            between = tuple(pd.Period(p) for p in between)
+            # Verify first period is before second period
+            if between[0] >= between[1]:
+                raise ValueError("First period must be before second period.")
+            cohorts = {
+                k: v
+                for k, v in self.cohorts.items()
+                if between[0] <= v.acq_period <= between[1]
+            }
+
+        return CohortSet(cohorts=cohorts)
 
     def foreach_cohort(
         self,
@@ -515,7 +562,7 @@ class AcquisitionCohortSplitter(CohortSplitter):
         )
 
         cids_per_period = c_first_orders.foreach_period(
-            periods="M",
+            periods=self.freq,
             df=lambda p: {"customer_ids": p.customer_ids},
         )
 

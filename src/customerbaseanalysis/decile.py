@@ -33,7 +33,7 @@ class Decile(AccessCustomerSummaryPropertiesMixin):
     def __str__(self) -> str:
         """Pretty print this decile."""
         return (
-            f"Single Decile"
+            f"Single Decile\n"
             f"\n"
             f"Name: {self.name}\n"
             f"Num customers: {self.n_customers}\n"
@@ -45,7 +45,7 @@ class Decile(AccessCustomerSummaryPropertiesMixin):
         # TODO: Should there be a attribute "rank" that is the position of the decile?
         #   Probably not, because its position is determined at a higher level.
 
-    def select(self, customer_ids: Iterable[str]) -> "Decile":
+    def select_customers(self, customer_ids: Iterable[str]) -> "Decile":
         """Subset the decile to only include the specified customer ids"""
         return Decile(
             name=self.name,
@@ -100,20 +100,21 @@ class DecileList:
         self.cutpoints = cutpoints
         self.order_col = order_col
 
-    def select(self, customer_ids: set[str]) -> "DecileList":
+
+    def select_customers(self, customer_ids: set[str]) -> "DecileList":
         """Select only the given customer ids across all deciles.
 
         Subsetting deciles does strictly speaking not make sense because it will not be
         a *Decile*List anymore.
         """
         return DecileList(
-            deciles=[d.select(customer_ids) for d in self.deciles],
+            deciles=[d.select_customers(customer_ids) for d in self.deciles],
             order_col=self.order_col,
             cutpoints=self.cutpoints,
         )
 
     @property
-    def customer_map(self) -> pd.DataFrame:
+    def df_deciles(self) -> pd.DataFrame:
         """Decile membership (decile name) for every customer."""
         # self.foreach_decile(df=lambda d: list(d.customer_summary.customer_ids))
         return pd.concat(
@@ -129,25 +130,15 @@ class DecileList:
             ]
         ).reset_index(drop=True)
 
-    def customer_ids(self, decile: int | None = None) -> set[str]:
-        """Get the customer ids for all deciles or a specific decile.
+    @property
+    def customer_ids(self) -> set[str]:
+        """Get the customer ids across all deciles."""
+        return set.union(*[d.customer_summary.customer_ids for d in self.deciles])
 
-        Args:
-            decile: The decile to get the customer ids for. Note that deciles are
-                1-indexed (ie deciles 1 to 10). If None, returns the customer ids for
-                all deciles.
-        """
-        if decile is not None:
-            return self.deciles[decile - 1].customer_summary.customer_ids
-        else:
-            return set.union(*[d.customer_summary.customer_ids for d in self.deciles])
-
-    def n_customers(self, decile: int | None = None) -> int:
-        """Get the number of customers for all deciles or a specific decile."""
-        if decile is not None:
-            return self.deciles[decile].n_customers
-        else:
-            return sum(d.n_customers for d in self.deciles)
+    @property
+    def n_customers(self) -> int:
+        """Get the number of customers across all deciles."""
+        return sum(d.n_customers for d in self.deciles)
 
     def summary(self) -> pd.DataFrame:
         """Get summary statistics for each decile in a single pd.DataFrame."""
@@ -285,7 +276,7 @@ class DecileSplitterCutpoints(DecileSplitter):
             f"\n"
             f"Split to customers at given cutpoints into deciles\n"
             f"order_col: {self.order_col}\n"
-            f"cutpoints: {self.cutpoints}"
+            f"cutpoints: {self.cutpoints}\n"
         )
 
     def __init__(self, order_col: str, cutpoints: Iterable[float]):
@@ -320,7 +311,7 @@ class DecileSplitterEqualNumCustomers(DecileSplitter):
             f"DecileSplitterEqualNumCustomers\n"
             f"\n"
             f"Split to equal num customers (sorted by order_col) in each decile \n"
-            f"order_col: {self.order_col}"
+            f"order_col: {self.order_col}\n"
         )
 
     def _assign_customers_to_deciles(
@@ -344,7 +335,7 @@ class DecileSplitterEqualAmount(DecileSplitter):
             f"DecileSplitterEqualAmount\n"
             f"\n"
             f"Split to equal amount of order_col in each decile \n"
-            f"order_col: {self.order_col}"
+            f"order_col: {self.order_col}\n"
         )
 
     def _assign_customers_to_deciles(

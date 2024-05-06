@@ -75,14 +75,13 @@ class BasketData(OrderPropertiesMixin, CustomerPropertiesMixin):
                 revenue (float), margin (currency amount, float)
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Pretty print BasketData object."""
         return (
             f"BasketData\n"
             f"\n"
             f"Items: {self.n_items} \n"
-            f"Time: {self.data['timestamp'].min().date()} <> "
-            f"{self.data['timestamp'].max().date()}"
+            f"Time: {self.time_first_order.date()} <> {self.time_last_order.date()}\n"
             f"Orders: {self.n_orders} \n"
             f"Customers: {self.n_customers} \n"
         )
@@ -147,21 +146,22 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         data (pd.DataFrame): Order data aggregated at the order_id level.
             columns: order_id (str), customer_id (str), timestamp, revenue,
                 margin (currency amount), margin_perc
-        _order_num (pd.DataFrame): Running order number for each customer.
+        _order_num (pd.DataFrame): Running order number for each customer, generated 
+            when calling `select_nth` the first time.
             columns: order_id, customer_id, timestamp, order_num
     """
 
     def __getitem__(self, cols: str | list[str]):
         return self.data[cols]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Pretty print OrderSummary object."""
         return (
             f"OrderSummary\n"
             f"\n"
             f"Orders: {self.n_orders} \n"
             f"Customers: {self.n_customers} \n"
-            f"Time: {min(self.timestamps)} <> {max(self.timestamps)}"
+            f"Time: {self.time_first_order.date()} <> {self.time_last_order.date()}\n"
         )
 
     def __init__(self, data: pd.DataFrame):
@@ -390,7 +390,7 @@ class CustomerSummary(CustomerPropertiesMixin):
             columns: customer_id (str), <one column for each stat>
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Pretty print CustomerSummary object."""
         return (
             f"CustomerSummary\n"
@@ -398,8 +398,8 @@ class CustomerSummary(CustomerPropertiesMixin):
             f"Customers: {self.n_customers}\n"
             f"Orders ({self.n_orders}): {self.time_first_order.date()} <> "
             f"{self.time_last_order.date()}\n"
-            f"First Orders: {self.data["time_first_order"].min().date()} <> "
-            f"{self.data["time_first_order"].max().date()}\n"
+            f"First Orders: {self.time_first_order.date()} <> "
+            f"{self.data['time_first_order'].max().date()}\n"
             f"\n"
             f"Total Revenue: {round(self.sum_revenue, 2)}\n"
             f"Total Margin: {round(self.sum_margin, 2)}\n"
@@ -630,13 +630,15 @@ class PeriodData(
     def __str__(self) -> str:
         """Pretty print data in this period."""
         return (
-            f"Period: {self.name}\n"
-            f"Time: {self.period.start_time.date()} <> {self.period.end_time.date()}\n"
+            f"Period\n"
             f"\n"
+            f"Name: {self.name}\n"
+            f"Time Period: {self.period}\n"
             f"Customers: {self.n_customers}\n"
-            f"Orders: {self.n_orders}\n"
+            f"Orders ({self.n_orders}): {self.time_first_order.date()} <> "
+            f"{self.time_last_order.date()}\n"
             f"Total Revenue: {round(self.sum_revenue )}\n"
-            f"Total Margin: {round(self.sum_margin)}"
+            f"Total Margin: {round(self.sum_margin)}\n"
         )
 
     def __init__(
