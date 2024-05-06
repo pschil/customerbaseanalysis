@@ -22,7 +22,7 @@ from customerbaseanalysis.foreach import (
 
 __all__ = [
     "Cohort",
-    "CohortSet",
+    "CohortList",
     "AcquisitionCohortSplitter",
 ]
 
@@ -305,21 +305,18 @@ class Cohort(AccessCustomerSummaryPropertiesMixin, AccessOrderSummaryPropertiesM
     #     # return df_plot.plot(x="period", y="value", xlabel="Period", ax=ax, **kwargs)
 
 
-class CohortSet:
-    """Set of acquisition cohorts.
-
-    Set and not list to define sub-classes which store multiple cohorts which were
-    acquired at the same time but in different channels.
+class CohortList:
+    """List of acquisition cohorts.
 
     Attributes:
-        cohorts (dict[str, Cohort]): The cohorts in the set.
+        cohorts: The cohorts, ordered by acquisition period.
     """
 
-    cohorts: dict[str, Cohort]
+    cohorts: list[Cohort]
 
     def __str__(self) -> str:
         return (
-            f"CohortSet\n"
+            f"CohortList\n"
             f"\n"
             f"Number of Cohorts: {self.n_cohorts}\n"
             f"Acquisition Period: {self.time_first_acquisition.date()} <> "
@@ -332,18 +329,39 @@ class CohortSet:
             f"Total Margin: {round(self.sum_margin, 2)}\n"
         )
 
-    def __init__(self, cohorts: dict[str, Cohort]):
-        # Verify dict is not empty
+    def __init__(self, cohorts: list[Cohort]):
+        # Verify list is not empty
         if not cohorts:
-            raise ValueError("CohortSet must contain at least one cohort.")
+            raise ValueError("List of cohorts must not be empty.")
+        # Verify all cohort names are unique
+        if len(set(c.name for c in cohorts)) != len(cohorts):
+            raise ValueError("All cohort names must be unique.")
+        # Verify ordered by acquisition period
+        if not all(
+            cohorts[i].acq_period <= cohorts[i + 1].acq_period
+            for i in range(len(cohorts) - 1)
+        ):
+            raise ValueError("Cohorts must be ordered (<=) by acquisition period.")
+        
         self.cohorts = copy.deepcopy(cohorts)
 
-    def __getitem__(self, item: str | Iterable[str]) -> Cohort | "CohortSet":
+    def __getitem__(self, item: str | list[str]) -> "Cohort | CohortList":
         """Get a cohort or a subset of cohorts by name(s)."""
         if isinstance(item, str):
-            return self.cohorts[item]
+            # find cohort by name
+            return next(c for c in self.cohorts if c.name == item)
         else:
-            return CohortSet({k: self.cohorts[k] for k in item})
+            # Verify all names are in the cohort (not silently ignoring some items)
+            if not set(item).issubset(self.cohort_names):
+                raise KeyError("Not all cohort names are in this cohort list.")
+            
+            # find cohorts by names
+            return CohortList([c for c in self.cohorts if c.name in item])
+        
+    def __iter__(self):
+        """Provide Iterator to iterate over the cohorts."""
+        # this makes it an "Iterable"
+        return iter(self.cohorts)
 
     @property
     def n_cohorts(self) -> int:
@@ -351,54 +369,54 @@ class CohortSet:
         return len(self.cohorts)
 
     @property
-    def cohort_names(self) -> set[str]:
+    def cohort_names(self) -> list[str]:
         """Names of the cohorts."""
-        return set(self.cohorts.keys())
+        return [c.name for c in self]
 
     @property
-    def acq_periods(self) -> set[pd.Period]:
+    def acq_periods(self) -> list[pd.Period]:
         """Acquisition periods of the cohorts."""
-        return {c.acq_period for c in self.cohorts.values()}
+        return [c.acq_period for c in self]
 
     @property
     def time_first_acquisition(self) -> pd.Timestamp:
         """The timestamp of the first acquisition across all cohorts."""
-        return min(c.time_first_acquisition for c in self.cohorts.values())
+        return min(c.time_first_acquisition for c in self)
 
     @property
     def time_last_acquisition(self) -> pd.Timestamp:
         """The timestamp of the last acquisition across all cohorts."""
-        return max(c.time_last_acquisition for c in self.cohorts.values())
+        return max(c.time_last_acquisition for c in self)
 
     @property
     def time_first_order(self) -> pd.Timestamp:
         """The timestamp of the first order across all cohorts."""
-        return min(c.time_first_order for c in self.cohorts.values())
+        return min(c.time_first_order for c in self)
 
     @property
     def time_last_order(self) -> pd.Timestamp:
         """The timestamp of the last order across all cohorts."""
-        return max(c.time_last_order for c in self.cohorts.values())
+        return max(c.time_last_order for c in self)
 
     @property
     def n_customers(self) -> int:
         """Number of customers across all cohorts."""
-        return sum(c.n_customers for c in self.cohorts.values())
+        return sum(c.n_customers for c in self)
 
     @property
     def n_orders(self) -> int:
         """Number of orders across all cohorts."""
-        return sum(c.n_orders for c in self.cohorts.values())
+        return sum(c.n_orders for c in self)
 
     @property
     def sum_revenue(self) -> float:
         """Total revenue across all cohorts."""
-        return sum(c.sum_revenue for c in self.cohorts.values())
+        return sum(c.sum_revenue for c in self)
 
     @property
     def sum_margin(self) -> float:
         """Total margin across all cohorts."""
-        return sum(c.sum_margin for c in self.cohorts.values())
+        return sum(c.sum_margin for c in self)
 
     @property
     def df_acquisition(self) -> pd.DataFrame:
@@ -411,7 +429,7 @@ class CohortSet:
         self,
         lower: str | pd.Period | None = None,
         upper: str | pd.Period | None = None,
-        between: tuple[str | pd.Period, str | pd.Period] | None = None,
+        between: tuple[str, str] | tuple[pd.Period, pd.Period] | None = None,
     ) -> "CohortList":
         """Select cohorts based on the acquisition period.
 
@@ -426,22 +444,18 @@ class CohortSet:
 
         if lower is not None:
             lower = pd.Period(lower)
-            cohorts = {k: v for k, v in self.cohorts.items() if v.acq_period >= lower}
+            cohorts = [c for c in self if c.acq_period >= lower]
         elif upper is not None:
             upper = pd.Period(upper)
-            cohorts = {k: v for k, v in self.cohorts.items() if v.acq_period <= upper}
+            cohorts = [c for c in self if c.acq_period <= upper]
         else:
             between = tuple(pd.Period(p) for p in between)
             # Verify first period is before second period
             if between[0] >= between[1]:
                 raise ValueError("First period must be before second period.")
-            cohorts = {
-                k: v
-                for k, v in self.cohorts.items()
-                if between[0] <= v.acq_period <= between[1]
-            }
+            cohorts = [c for c in self if between[0] <= c.acq_period <= between[1]]
 
-        return CohortSet(cohorts=cohorts)
+        return CohortList(cohorts=cohorts)
 
     def foreach_cohort(
         self,
@@ -454,7 +468,7 @@ class CohortSet:
         verify_single_df_asis(df=df, asis=asis)
 
         def get_cohorts():
-            for c_data in self.cohorts.values():
+            for c_data in self:
                 yield ForeachDataElement(data=c_data, metainfo=c_data.name)
 
         if df is not None:
@@ -482,7 +496,7 @@ class CohortSet:
     def summary(self) -> pd.DataFrame:
         """Summary statistics across all cohorts."""
         return (
-            pd.concat([c.summary() for c in self.cohorts.values()])
+            pd.concat([c.summary() for c in self])
             .sort_values("first_order")
             .reset_index(drop=True)
         )
@@ -492,7 +506,7 @@ class CohortSplitter(abc.ABC):
     """Split order data into cohorts."""
 
     @abc.abstractmethod
-    def split(self, order_summary: OrderSummary, **kwargs) -> CohortSet:
+    def split(self, order_summary: OrderSummary, **kwargs) -> CohortList:
         """Split the data into cohorts."""
         raise NotImplementedError
 
@@ -527,7 +541,7 @@ class AcquisitionCohortSplitter(CohortSplitter):
     def __init__(self, freq: str):
         self.freq = freq
 
-    def split(self, order_summary: OrderSummary) -> CohortSet:
+    def split(self, order_summary: OrderSummary) -> CohortList:
         """Split the data into cohorts based on customers first order."""
 
         # Using pandas data structures
@@ -566,17 +580,19 @@ class AcquisitionCohortSplitter(CohortSplitter):
             df=lambda p: {"customer_ids": p.customer_ids},
         )
 
-        cohorts = {}
+        cohorts = []
         for p, df in cids_per_period.groupby("period"):
             cid_in_period = df["customer_ids"].squeeze()
             cohort_name = str(p)
-            cohorts[cohort_name] = Cohort(
-                name=cohort_name,
-                acq_period=p,
-                order_summary=order_summary.select_customers(cid_in_period),
+            cohorts.append(
+                Cohort(
+                    name=cohort_name,
+                    acq_period=p,
+                    order_summary=order_summary.select_customers(cid_in_period),
+                )
             )
 
-        return CohortSet(cohorts=cohorts)
+        return CohortList(cohorts=cohorts)
 
 
 # class AcquisitionTableCohortSplitter(AcquisitionCohortSplitter):
