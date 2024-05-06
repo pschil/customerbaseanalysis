@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "customerbaseanalysis"
+version = "0.1.0"
+description = "A package to analyze your customer base across different dimensions."
+authors = [
+    { name = "Patrik Schilter", email = "patrik.schilter@gmail.com" },
+]
+readme = "README.md"
+license = {text = "GPLv3 License"}
+requires-python = ">= 3.12"
+dependencies = [
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "seaborn", 
+]
+
+[project.urls]
+Repository = "https://github.com/pschil/customerbaseanalysis.git"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"customerbaseanalysis.datasets.csv" = ["*.csv"]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+
