@@ -124,6 +124,19 @@ class BasketData(OrderPropertiesMixin, CustomerPropertiesMixin):
     @classmethod
     def from_dataframe(cls, data: pd.DataFrame):
         """Create BasketData object from a DataFrame after converting data types."""
+        # Verify all required columns are present
+        required_cols = [
+            "order_id",
+            "customer_id",
+            "timestamp",
+            "revenue",
+            "profit",
+        ]
+        if not set(data.columns) >= set(required_cols):
+            raise ValueError(
+                "The following columns are required: "
+                "order_id, customer_id, timestamp, revenue, profit"
+            )
 
         # Convert data types
         data["customer_id"] = data["customer_id"].astype(str)
@@ -132,7 +145,7 @@ class BasketData(OrderPropertiesMixin, CustomerPropertiesMixin):
         data["profit"] = data["profit"].astype(float)
         data["timestamp"] = pd.to_datetime(data["timestamp"])
 
-        return cls(data)
+        return cls(data[required_cols])
 
 
 class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
@@ -176,6 +189,21 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         }
 
         verify_data(expected_dtypes=expected_dtypes, data=data)
+        
+        # Dont do these checks because very slow and OrderSummary is created in many 
+        # places. Instead, only create from BasketData.
+        # # Verify single customer_id and timestamp per order_id
+        # order_validation = data.groupby("order_id").agg(
+        #     nunique_customerid=("customer_id", "nunique"),
+        #     nunique_timestamp=("timestamp", "nunique"),
+        # )
+        # if not (
+        #     order_validation["nunique_customerid"].eq(1).all()
+        #     and order_validation["nunique_timestamp"].eq(1).all()
+        # ):
+        #     raise ValueError(
+        #         "Order data with multiple customer_id or timestamp per order_id"
+        #     )
 
         # fresh numeric index
         self.data = data.copy().reset_index(drop=True)
@@ -200,19 +228,33 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
 
         return cls(data=order_summary)
 
-    @classmethod
-    def from_dataframe(cls, data: pd.DataFrame):
-        """Create OrderSummary object from a DataFrame after converting data types."""
+    # @classmethod
+    # def from_dataframe(cls, data: pd.DataFrame):
+    #     """Create OrderSummary object from a DataFrame after converting data types."""
 
-        # Convert data types
-        data["customer_id"] = data["customer_id"].astype(str)
-        data["order_id"] = data["order_id"].astype(str)
-        data["timestamp"] = pd.to_datetime(data["timestamp"])
-        data["revenue"] = data["revenue"].astype(float)
-        data["profit"] = data["profit"].astype(float)
-        data["perc_profit_margin"] = data["perc_profit_margin"].astype(float)
+    #     # Verify required columns are present
+    #     if not set(data.columns) == {
+    #         "order_id",
+    #         "customer_id",
+    #         "timestamp",
+    #         "revenue",
+    #         "profit",
+    #         "perc_profit_margin",
+    #     }:
+    #         raise ValueError(
+    #             "The following columns are required: "
+    #             "order_id, customer_id, timestamp, revenue, profit, perc_profit_margin"
+    #         )
 
-        return cls(data)
+    #     # Convert data types
+    #     data["order_id"] = data["order_id"].astype(str)
+    #     data["customer_id"] = data["customer_id"].astype(str)
+    #     data["timestamp"] = pd.to_datetime(data["timestamp"])
+    #     data["revenue"] = data["revenue"].astype(float)
+    #     data["profit"] = data["profit"].astype(float)
+    #     data["perc_profit_margin"] = data["perc_profit_margin"].astype(float)
+
+    #     return cls(data)
 
     def data_long(self) -> pd.DataFrame:
         """Long format of the data."""
@@ -431,7 +473,7 @@ class CustomerSummary(CustomerPropertiesMixin):
         if data["customer_id"].duplicated().any():
             raise ValueError("data may not contain duplicate customer_ids")
 
-        self.data = data.copy()
+        self.data = data.copy().reset_index(drop=True)
 
     @property
     def data_long(self) -> pd.DataFrame:
