@@ -1,6 +1,8 @@
 """Mixins to use in other classes."""
 
+from typing import Callable
 import pandas as pd
+from matplotlib import pyplot as plt
 
 
 class OrderPropertiesMixin:
@@ -80,7 +82,7 @@ class AccessOrderSummaryPropertiesMixin:
         return self.order_summary.order_ids
 
 
-class AccessCustomerSummaryPropertiesMixin:
+class AccessCustomerSummaryMixin:
     """Properties of self.customer_summary."""
 
     @property
@@ -117,3 +119,29 @@ class AccessCustomerSummaryPropertiesMixin:
     def aom(self) -> float:
         """Average order revenue."""
         return self.customer_summary.aom
+
+    def plot_hist(
+        self,
+        x: str | Callable[[pd.DataFrame], pd.DataFrame],
+        clip_lower: float | None = None,
+        clip_upper: float | None = None,
+        astype: str | None = None,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        plot: bool = True,
+        ax=None,
+        **kwargs,
+    ) -> pd.DataFrame | plt.Axes:
+        """See `CustomerSummary.plot_hist`."""
+
+        return self.customer_summary.plot_hist(
+            x=x,
+            clip_lower=clip_lower,
+            clip_upper=clip_upper,
+            astype=astype,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            plot=plot,
+            ax=ax,
+            **kwargs,
+        )

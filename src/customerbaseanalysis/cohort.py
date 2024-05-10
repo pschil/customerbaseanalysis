@@ -8,7 +8,7 @@ import pandas as pd
 from customerbaseanalysis.data import OrderSummary, CustomerSummary, PeriodData
 from customerbaseanalysis.ctime import CohortTime, CalendarTime
 from customerbaseanalysis.mixins import (
-    AccessCustomerSummaryPropertiesMixin,
+    AccessCustomerSummaryMixin,
     AccessOrderSummaryPropertiesMixin,
 )
 from customerbaseanalysis.foreach import (
@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-class Cohort(AccessCustomerSummaryPropertiesMixin, AccessOrderSummaryPropertiesMixin):
+class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
     """Customer and order data of a group of customers acquired in the same period.
 
     Attributes:
@@ -342,7 +342,7 @@ class CohortList:
             for i in range(len(cohorts) - 1)
         ):
             raise ValueError("Cohorts must be ordered (<=) by acquisition period.")
-        
+
         self.cohorts = copy.deepcopy(cohorts)
 
     def __getitem__(self, item: str | list[str]) -> "Cohort | CohortList":
@@ -354,10 +354,10 @@ class CohortList:
             # Verify all names are in the cohort (not silently ignoring some items)
             if not set(item).issubset(self.cohort_names):
                 raise KeyError("Not all cohort names are in this cohort list.")
-            
+
             # find cohorts by names
             return CohortList([c for c in self.cohorts if c.name in item])
-        
+
     def __iter__(self):
         """Provide Iterator to iterate over the cohorts."""
         # this makes it an "Iterable"

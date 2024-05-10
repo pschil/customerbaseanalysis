@@ -2,13 +2,13 @@
 
 from typing import Callable, Iterable
 
-# from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 import pandas as pd
 
 from customerbaseanalysis.mixins import (
     CustomerPropertiesMixin,
     OrderPropertiesMixin,
-    AccessCustomerSummaryPropertiesMixin,
+    AccessCustomerSummaryMixin,
     AccessOrderSummaryPropertiesMixin,
 )
 
@@ -146,7 +146,7 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         data (pd.DataFrame): Order data aggregated at the order_id level.
             columns: order_id (str), customer_id (str), timestamp, revenue,
                 profit (currency amount), perc_profit_margin
-        _order_num (pd.DataFrame): Running order number for each customer, generated 
+        _order_num (pd.DataFrame): Running order number for each customer, generated
             when calling `select_nth` the first time.
             columns: order_id, customer_id, timestamp, order_num
     """
@@ -263,7 +263,7 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         determined by the order timestamp.
         It does NOT select all orders of the customers having upto, morethan, exactly
         n orders. This would require aggregating by customers.
-        
+
         Args:
             lessthan: All orders until but excl. the `lessthan`-th ( < `lessthan`).
             morethan: All orders after the `morethan`-th order ( > `morethan`).
@@ -348,7 +348,7 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         agg_fn: Callable = sum,
         ylabel: str | None = None,
         **kwargs,
-    ) -> "plt.Axes":
+    ) -> plt.Axes:
         """Plot order data over time, aggregated by freq.
 
         Args:
@@ -384,6 +384,8 @@ class CustomerSummary(CustomerPropertiesMixin):
         - total_order_profit: Sum of profit across all orders
         - mean_order_profit: Mean profit across all orders
         - median_order_profit: Median profit across all orders
+        - perc_profit_margin: Mean profit margin across all orders
+            (total_order_profit/total_order_revenue)
 
     Attributes:
         data (pd.DataFrame): Customer summary data with above statistics.
@@ -420,6 +422,7 @@ class CustomerSummary(CustomerPropertiesMixin):
                 "total_order_profit": "float",
                 "mean_order_profit": "float",
                 "median_order_profit": "float",
+                "perc_profit_margin": "float",
             },
             data=data,
         )
@@ -451,6 +454,10 @@ class CustomerSummary(CustomerPropertiesMixin):
             total_order_profit=("profit", "sum"),
             mean_order_profit=("profit", "mean"),
             median_order_profit=("profit", "median"),
+        )
+        customer_summary["perc_profit_margin"] = (
+            customer_summary["total_order_profit"]
+            / customer_summary["total_order_revenue"]
         )
         return cls(customer_summary)
 
@@ -557,7 +564,7 @@ class CustomerSummary(CustomerPropertiesMixin):
         plot: bool = True,
         ax=None,
         **kwargs,
-    ) -> "pd.DataFrame | plt.Axes":
+    ) -> pd.DataFrame | plt.Axes:
         """Plot a histogram of the data.
 
         Args:
@@ -596,7 +603,8 @@ class CustomerSummary(CustomerPropertiesMixin):
 
     def summary(self) -> pd.DataFrame:
         """Summary statistics and decompositions of the customer data."""
-        return pd.DataFrame({
+        return pd.DataFrame(
+            {
                 "n_customers": [self.n_customers],
                 "n_orders": [self.n_orders],
                 "sum_revenue": [self.sum_revenue],
@@ -609,12 +617,11 @@ class CustomerSummary(CustomerPropertiesMixin):
                 "avg_revenue_per_customer": [self.sum_revenue / self.n_customers],
                 "avg_profit_per_customer": [self.sum_profit / self.n_customers],
                 "avg_orders_per_customer": [self.n_orders / self.n_customers],
-            }).round(2)
+            }
+        ).round(2)
 
 
-class PeriodData(
-    AccessCustomerSummaryPropertiesMixin, AccessOrderSummaryPropertiesMixin
-):
+class PeriodData(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
     """Data of a single period.
 
     Keeps together order and customer data of a single period.
@@ -637,8 +644,8 @@ class PeriodData(
             f"Customers: {self.n_customers}\n"
             f"Orders ({self.n_orders}): {self.time_first_order.date()} <> "
             f"{self.time_last_order.date()}\n"
-            f"Total Revenue: {round(self.sum_revenue)}\n"
-            f"Total Profit: {round(self.sum_profit)}\n"
+            f"Total Revenue: {round(self.sum_revenue, 2)}\n"
+            f"Total Profit: {round(self.sum_profit, 2)}\n"
         )
 
     def __init__(

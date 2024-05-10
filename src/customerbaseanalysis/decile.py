@@ -5,7 +5,7 @@ import copy
 from typing import Iterable, Callable, Any
 import pandas as pd
 from customerbaseanalysis.data import CustomerSummary
-from customerbaseanalysis.mixins import AccessCustomerSummaryPropertiesMixin
+from customerbaseanalysis.mixins import AccessCustomerSummaryMixin
 from customerbaseanalysis.foreach import (
     ForeachDF,
     ForeachAsIs,
@@ -19,10 +19,11 @@ __all__ = [
     "DecileSplitterEqualNumCustomers",
     "DecileSplitterEqualAmount",
     "DecileSplitterCutpoints",
+    "DecileList",
 ]
 
 
-class Decile(AccessCustomerSummaryPropertiesMixin):
+class Decile(AccessCustomerSummaryMixin):
     """A group of customers which forms a single decile.
 
     Attributes:
