@@ -123,9 +123,9 @@ class DecileList:
         return iter(self.deciles)
 
     def __getitem__(self, key: int | str) -> Decile:
-        """Get a decile or a subset of deciles by rank(s) or name(s)."""
+        """Get a decile by position (int) or name (str)."""
         if isinstance(key, int):
-            return next(d for d in self if d.rank == key)
+            return self.deciles[key]
         elif isinstance(key, str):
             return next(d for d in self if d.name == key)
         else:
@@ -248,8 +248,9 @@ class DecileSplitter(abc.ABC):
         order_col: The column in customer_summary to use for splitting.
     """
 
-    def __init__(self, order_col: str) -> None:
+    def __init__(self, order_col: str, name_prefix: str = "Decile ") -> None:
         self.order_col = order_col
+        self.name_prefix = name_prefix
 
     def _revert_deciles(self, ser: pd.Series):
         return abs(ser - 10)
@@ -279,7 +280,7 @@ class DecileSplitter(abc.ABC):
         deciles = DecileList(
             [
                 Decile(
-                    name=f"Decile {n}",
+                    name=self.name_prefix + str(n),
                     rank=n,
                     customer_summary=customer_summary.select_customers(
                         customer_ids=set(df_d["customer_id"])
