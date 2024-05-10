@@ -5,7 +5,9 @@ import abc
 from typing import Iterable, Callable, Any
 
 import pandas as pd
-from customerbaseanalysis.data import OrderSummary, CustomerSummary, PeriodData
+from customerbaseanalysis.perioddata import PeriodData
+from customerbaseanalysis.decile import DecileList, DecileSplitter
+from customerbaseanalysis.data import OrderSummary, CustomerSummary
 from customerbaseanalysis.ctime import CohortTime, CalendarTime
 from customerbaseanalysis.mixins import (
     AccessCustomerSummaryMixin,
@@ -135,6 +137,10 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
         return self.order_summary.apply_inter_order(
             lambda df: df["timestamp"].diff().dropna()
         )
+        
+    def to_deciles(self, splitter: DecileSplitter) -> DecileList:
+        """Split the cohort into deciles."""
+        return splitter.split(self.customer_summary)
 
     def foreach_period(
         self,
