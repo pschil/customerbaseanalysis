@@ -57,7 +57,7 @@ class Cohort(AccessCustomerSummaryPropertiesMixin, AccessOrderSummaryPropertiesM
             f"Customers: {self.n_customers}\n"
             f"Orders: {self.n_orders}\n"
             f"Total Revenue: {round(self.sum_revenue,2)}\n"
-            f"Total Margin: {round(self.sum_margin, 2)}\n"
+            f"Total Profit: {round(self.sum_profit, 2)}\n"
         )
 
     @property
@@ -326,7 +326,7 @@ class CohortList:
             f"Num Customers: {self.n_customers}\n"
             f"Num Orders: {self.n_orders}\n"
             f"Total Revenue: {round(self.sum_revenue, 2)}\n"
-            f"Total Margin: {round(self.sum_margin, 2)}\n"
+            f"Total Profit: {round(self.sum_profit, 2)}\n"
         )
 
     def __init__(self, cohorts: list[Cohort]):
@@ -414,9 +414,9 @@ class CohortList:
         return sum(c.sum_revenue for c in self)
 
     @property
-    def sum_margin(self) -> float:
-        """Total margin across all cohorts."""
-        return sum(c.sum_margin for c in self)
+    def sum_profit(self) -> float:
+        """Total profit across all cohorts."""
+        return sum(c.sum_profit for c in self)
 
     @property
     def df_acquisition(self) -> pd.DataFrame:

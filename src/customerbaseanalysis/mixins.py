@@ -37,9 +37,9 @@ class OrderPropertiesMixin:
         return float(self.data["revenue"].sum())
 
     @property
-    def sum_margin(self) -> float:
-        """The total margin in the object."""
-        return float(self.data["margin"].sum())
+    def sum_profit(self) -> float:
+        """The total profit in the object."""
+        return float(self.data["profit"].sum())
 
 
 class CustomerPropertiesMixin:
@@ -99,9 +99,9 @@ class AccessCustomerSummaryPropertiesMixin:
         return self.customer_summary.sum_revenue
 
     @property
-    def sum_margin(self) -> float:
-        """Total margin of all orders."""
-        return self.customer_summary.sum_margin
+    def sum_profit(self) -> float:
+        """Total profit of all orders."""
+        return self.customer_summary.sum_profit
 
     @property
     def aof(self) -> float:

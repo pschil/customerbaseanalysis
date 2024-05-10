@@ -180,7 +180,7 @@ class DecileList:
         df["perc_of_customers"] = to_percent(df["n_customers"])
         df["perc_of_orders"] = to_percent(df["n_orders"])
         df["perc_of_revenue"] = to_percent(df["sum_revenue"])
-        df["perc_of_margin"] = to_percent(df["sum_margin"])
+        df["perc_of_profit"] = to_percent(df["sum_profit"])
 
         # Return in correct col order
         return df[
@@ -193,13 +193,13 @@ class DecileList:
                 "perc_of_orders",
                 "sum_revenue",
                 "perc_of_revenue",
-                "sum_margin",
-                "perc_of_margin",
+                "sum_profit",
+                "perc_of_profit",
                 "aof",
                 "aov",
                 "aom",
                 "avg_revenue_per_customer",
-                "avg_margin_per_customer",
+                "avg_profit_per_customer",
                 "avg_orders_per_customer",
             ]
         ]

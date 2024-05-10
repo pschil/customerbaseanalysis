@@ -72,7 +72,7 @@ class BasketData(OrderPropertiesMixin, CustomerPropertiesMixin):
         basket (pd.DataFrame): Basket data with one item per row. In the future may
             also hold infos such as item count, sku, tax, COGS, etc.
             columns: order_id (str), customer_id (str), timestamp (pd.datetime),
-                revenue (float), margin (currency amount, float)
+                revenue (float), profit (currency amount, float)
     """
 
     def __str__(self) -> str:
@@ -100,7 +100,7 @@ class BasketData(OrderPropertiesMixin, CustomerPropertiesMixin):
                 "customer_id": "str",
                 "timestamp": "datetime64",
                 "revenue": "float",
-                "margin": "float",
+                "profit": "float",
             },
             data=data,
         )
@@ -129,7 +129,7 @@ class BasketData(OrderPropertiesMixin, CustomerPropertiesMixin):
         data["customer_id"] = data["customer_id"].astype(str)
         data["order_id"] = data["order_id"].astype(str)
         data["revenue"] = data["revenue"].astype(float)
-        data["margin"] = data["margin"].astype(float)
+        data["profit"] = data["profit"].astype(float)
         data["timestamp"] = pd.to_datetime(data["timestamp"])
 
         return cls(data)
@@ -145,7 +145,7 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
     Attributes:
         data (pd.DataFrame): Order data aggregated at the order_id level.
             columns: order_id (str), customer_id (str), timestamp, revenue,
-                margin (currency amount), margin_perc
+                profit (currency amount), perc_profit_margin
         _order_num (pd.DataFrame): Running order number for each customer, generated 
             when calling `select_nth` the first time.
             columns: order_id, customer_id, timestamp, order_num
@@ -171,8 +171,8 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
             "customer_id": "str",
             "timestamp": "datetime64",
             "revenue": "float",
-            "margin": "float",
-            "margin_perc": "float",
+            "profit": "float",
+            "perc_profit_margin": "float",
         }
 
         verify_data(expected_dtypes=expected_dtypes, data=data)
@@ -190,12 +190,12 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
             ["order_id", "customer_id", "timestamp"], as_index=False
         ).agg(
             revenue=("revenue", "sum"),
-            margin=("margin", "sum"),
+            profit=("profit", "sum"),
         )
 
-        # Calculate margin percentage of each order
-        order_summary["margin_perc"] = (
-            order_summary["margin"] / order_summary["revenue"]
+        # Calculate profit percentage of each order
+        order_summary["perc_profit_margin"] = (
+            order_summary["profit"] / order_summary["revenue"]
         )
 
         return cls(data=order_summary)
@@ -209,8 +209,8 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         data["order_id"] = data["order_id"].astype(str)
         data["timestamp"] = pd.to_datetime(data["timestamp"])
         data["revenue"] = data["revenue"].astype(float)
-        data["margin"] = data["margin"].astype(float)
-        data["margin_perc"] = data["margin_perc"].astype(float)
+        data["profit"] = data["profit"].astype(float)
+        data["perc_profit_margin"] = data["perc_profit_margin"].astype(float)
 
         return cls(data)
 
@@ -381,9 +381,9 @@ class CustomerSummary(CustomerPropertiesMixin):
         - total_order_revenue: Sum of revenue across all orders
         - mean_order_revenue: Mean revenue across all orders
         - median_order_revenue: Median revenue across all orders
-        - total_order_margin: Sum of margin across all orders
-        - mean_order_margin: Mean margin across all orders
-        - median_order_margin: Median margin across all orders
+        - total_order_profit: Sum of profit across all orders
+        - mean_order_profit: Mean profit across all orders
+        - median_order_profit: Median profit across all orders
 
     Attributes:
         data (pd.DataFrame): Customer summary data with above statistics.
@@ -402,7 +402,7 @@ class CustomerSummary(CustomerPropertiesMixin):
             f"{self.data['time_first_order'].max().date()}\n"
             f"\n"
             f"Total Revenue: {round(self.sum_revenue, 2)}\n"
-            f"Total Margin: {round(self.sum_margin, 2)}\n"
+            f"Total Profit: {round(self.sum_profit, 2)}\n"
         )
 
     def __init__(self, data: pd.DataFrame):
@@ -417,9 +417,9 @@ class CustomerSummary(CustomerPropertiesMixin):
                 "total_order_revenue": "float",
                 "mean_order_revenue": "float",
                 "median_order_revenue": "float",
-                "total_order_margin": "float",
-                "mean_order_margin": "float",
-                "median_order_margin": "float",
+                "total_order_profit": "float",
+                "mean_order_profit": "float",
+                "median_order_profit": "float",
             },
             data=data,
         )
@@ -448,9 +448,9 @@ class CustomerSummary(CustomerPropertiesMixin):
             total_order_revenue=("revenue", "sum"),
             mean_order_revenue=("revenue", "mean"),
             median_order_revenue=("revenue", "median"),
-            total_order_margin=("margin", "sum"),
-            mean_order_margin=("margin", "mean"),
-            median_order_margin=("margin", "median"),
+            total_order_profit=("profit", "sum"),
+            mean_order_profit=("profit", "mean"),
+            median_order_profit=("profit", "median"),
         )
         return cls(customer_summary)
 
@@ -465,9 +465,9 @@ class CustomerSummary(CustomerPropertiesMixin):
         return float(self.data["total_order_revenue"].sum())
 
     @property
-    def sum_margin(self) -> float:
-        """The total margin across all customers."""
-        return float(self.data["total_order_margin"].sum())
+    def sum_profit(self) -> float:
+        """The total profit across all customers."""
+        return float(self.data["total_order_profit"].sum())
 
     @property
     def time_first_order(self) -> pd.Timestamp:
@@ -486,8 +486,8 @@ class CustomerSummary(CustomerPropertiesMixin):
 
     @property
     def aom(self) -> float:
-        """Average order margin (AOM) across all customers."""
-        return float(self.sum_margin / self.sum_revenue)
+        """Average order profit (AOM) across all customers."""
+        return float(self.sum_profit / self.sum_revenue)
 
     @property
     def aof(self) -> float:
@@ -600,14 +600,14 @@ class CustomerSummary(CustomerPropertiesMixin):
                 "n_customers": [self.n_customers],
                 "n_orders": [self.n_orders],
                 "sum_revenue": [self.sum_revenue],
-                "sum_margin": [self.sum_margin],
+                "sum_profit": [self.sum_profit],
                 # profit decomposition
                 "aof": [self.aof],
                 "aov": [self.aov],
                 "aom": [self.aom],
                 # per customer
                 "avg_revenue_per_customer": [self.sum_revenue / self.n_customers],
-                "avg_margin_per_customer": [self.sum_margin / self.n_customers],
+                "avg_profit_per_customer": [self.sum_profit / self.n_customers],
                 "avg_orders_per_customer": [self.n_orders / self.n_customers],
             }).round(2)
 
@@ -637,8 +637,8 @@ class PeriodData(
             f"Customers: {self.n_customers}\n"
             f"Orders ({self.n_orders}): {self.time_first_order.date()} <> "
             f"{self.time_last_order.date()}\n"
-            f"Total Revenue: {round(self.sum_revenue )}\n"
-            f"Total Margin: {round(self.sum_margin)}\n"
+            f"Total Revenue: {round(self.sum_revenue)}\n"
+            f"Total Profit: {round(self.sum_profit)}\n"
         )
 
     def __init__(

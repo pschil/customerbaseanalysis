@@ -1,4 +1,4 @@
-customer_id,timestamp,revenue,order_id,margin
+customer_id,timestamp,revenue,order_id,profit
 1,1997-01-01,11.77,oid_10000,5.1788
 2,1997-01-12,12.0,oid_10001,4.08
 2,1997-01-12,77.0,oid_10002,23.87
