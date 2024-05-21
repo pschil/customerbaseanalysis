@@ -5,6 +5,8 @@ import abc
 from typing import Iterable, Callable, Any
 
 import pandas as pd
+from matplotlib import pyplot as plt
+
 from customerbaseanalysis.perioddata import PeriodData
 from customerbaseanalysis.decile import DecileList, DecileSplitter
 from customerbaseanalysis.data import OrderSummary, CustomerSummary
@@ -137,7 +139,7 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
         return self.order_summary.apply_inter_order(
             lambda df: df["timestamp"].diff().dropna()
         )
-        
+
     def to_deciles(self, splitter: DecileSplitter) -> DecileList:
         """Split the cohort into deciles."""
         return splitter.split(self.customer_summary)
@@ -517,7 +519,13 @@ class CohortSplitter(abc.ABC):
         raise NotImplementedError
 
     @classmethod
-    def plot_customer_growth(cls, order_summary: OrderSummary):
+    def plot_customer_growth(
+        cls,
+        order_summary: OrderSummary,
+        periods: str | pd.PeriodIndex = "M",
+        ax: plt.Axes | None = None,
+        **kwargs,
+    ):
         """Plot the number of customers acquired in each week."""
         # use cohort data structure to iterate over all periods (weeks)
         c_first_orders = Cohort(
@@ -527,7 +535,7 @@ class CohortSplitter(abc.ABC):
         )
 
         df_plot = c_first_orders.foreach_period(
-            periods="W-MON",
+            periods=periods,
             df=lambda p: {"n_acquired": p.n_customers},
         )
 
@@ -538,67 +546,96 @@ class CohortSplitter(abc.ABC):
             ylabel="Number of Customers Acquired",
             title="Customer Growth Over Time",
             kind="line",
+            ax=ax,
+            **kwargs,
         )
 
 
 class AcquisitionCohortSplitter(CohortSplitter):
-    """Split customer data into cohorts based on acquisition time."""
+    """Split customer data into cohorts based on acquisition time.
 
-    def __init__(self, freq: str):
+    Attributes:
+        freq (str): Frequency of acquisition periods.
+        min_size (int | None): Minimum number of customers required for a cohort.
+    """
+
+    def __init__(self, freq: str, min_size: int | None = None):
         self.freq = freq
+        self.min_size = min_size
 
     def split(self, order_summary: OrderSummary) -> CohortList:
         """Split the data into cohorts based on customers first order."""
 
         # Using pandas data structures
-        # c_sum = CustomerSummary.from_ordersummary(order_summary)
-        # first_orders = c_sum.data[["customer_id", "time_first_order"]]
-        # acq_periods = pd.period_range(
-        #     start=first_orders["time_first_order"].min(),
-        #     end=first_orders["time_first_order"].max(),
-        #     freq=self.freq,
-        # )
-        # cohorts = {}
-        # for p in acq_periods:
-        #     # customers doing their first order in this period
-        #     cid_in_period = first_orders.query(
-        #         "time_first_order >= @p.start_time and time_first_order < @p.end_time"
-        #     )
-        # cid_in_period = set(cid_in_period["customer_id"])
-        # cohort_name = str(p)
-        # cohorts[cohort_name] = Cohort(
-        #     name=cohort_name,
-        #     acq_period=p,
-        #     order_summary=order_summary.select_customers(cid_in_period),
-        # )
-        # return CohortSet(cohorts=cohorts)
-
-        # using package data structures
-        # use cohort data structure to iterate over all periods (weeks)
-        c_first_orders = Cohort(
-            name="placeholder",
-            acq_period=pd.Period("NaT"),
-            order_summary=order_summary.select_first_orders(),
+        c_sum = CustomerSummary.from_ordersummary(order_summary)
+        df_first_orders = c_sum.data[["customer_id", "time_first_order"]]
+        acq_periods = pd.period_range(
+            start=df_first_orders["time_first_order"].min(),
+            end=df_first_orders["time_first_order"].max(),
+            freq=self.freq,
         )
-
-        cids_per_period = c_first_orders.foreach_period(
-            periods=self.freq,
-            df=lambda p: {"customer_ids": p.customer_ids},
-        )
-
         cohorts = []
-        for p, df in cids_per_period.groupby("period"):
-            cid_in_period = df["customer_ids"].squeeze()
-            cohort_name = str(p)
+
+        for p in acq_periods:
+            # customers doing their first order in this period
+            # has to be inclusive boundaries [period.start_time, period.end_time],
+            # because periods are none-overlapping and otherwise customers with their
+            # first order on p.end_time are lost
+            df_in_period = df_first_orders.query(
+                "time_first_order >= @p.start_time and time_first_order <= @p.end_time"
+            )
+
+            # Skip if nobody came alive in this period
+            if df_in_period.shape[0] == 0:
+                continue
+
+            # Skip if minimum num customers required and not fulfilled
+            if self.min_size and df_in_period.shape[0] < self.min_size:
+                continue
+
+            cids_in_period = set(df_in_period["customer_id"])
+
             cohorts.append(
                 Cohort(
-                    name=cohort_name,
+                    name=str(p),
                     acq_period=p,
-                    order_summary=order_summary.select_customers(cid_in_period),
+                    order_summary=order_summary.select_customers(cids_in_period),
                 )
             )
 
         return CohortList(cohorts=cohorts)
+
+        # # using only package data structures
+        # # use cohort data structure to iterate over periods
+        # c_first_orders = Cohort(
+        #     name="placeholder",
+        #     acq_period=pd.Period("NaT"),
+        #     order_summary=order_summary.select_first_orders(),
+        # )
+
+        # cids_per_period = c_first_orders.foreach_period(
+        #     periods=self.freq,
+        #     df=lambda p: {"customer_ids": p.customer_ids},
+        # )
+
+        # cohorts = []
+        # for p, df in cids_per_period.groupby("period"):
+        #     df_in_period = df["customer_ids"].squeeze()
+
+        #     # skip if too small
+        #     if self.min_size is not None and len(cids_per_period) < self.min_size:
+        #         continue
+
+        #     cohort_name = str(p)
+        #     cohorts.append(
+        #         Cohort(
+        #             name=cohort_name,
+        #             acq_period=p,
+        #             order_summary=order_summary.select_customers(df_in_period),
+        #         )
+        #     )
+
+        # return CohortList(cohorts=cohorts)
 
 
 # class AcquisitionTableCohortSplitter(AcquisitionCohortSplitter):
