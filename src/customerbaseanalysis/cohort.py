@@ -353,18 +353,28 @@ class CohortList:
 
         self.cohorts = copy.deepcopy(cohorts)
 
-    def __getitem__(self, item: str | list[str]) -> "Cohort | CohortList":
-        """Get a cohort or a subset of cohorts by name(s)."""
+    def __getitem__(self, item: str | list[str] | int | slice) -> "Cohort | CohortList":
+        """Get a cohort or a subset of cohorts by position(s) or name(s)."""
         if isinstance(item, str):
             # find cohort by name
             return next(c for c in self.cohorts if c.name == item)
-        else:
+
+        elif isinstance(item, int):
+            return self.cohorts[item]
+
+        elif isinstance(item, list):
             # Verify all names are in the cohort (not silently ignoring some items)
             if not set(item).issubset(self.cohort_names):
                 raise KeyError("Not all cohort names are in this cohort list.")
 
             # find cohorts by names
             return CohortList([c for c in self.cohorts if c.name in item])
+
+        elif isinstance(item, slice):
+            return CohortList(self.cohorts[item])
+
+        else:
+            raise TypeError("Invalid type for item.")
 
     def __iter__(self):
         """Provide Iterator to iterate over the cohorts."""

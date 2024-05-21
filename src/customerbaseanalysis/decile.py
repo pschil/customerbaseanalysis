@@ -73,7 +73,7 @@ class Decile(AccessCustomerSummaryMixin):
 
 
 class DecileList:
-    """Group of 10 deciles ordered by their rank.
+    """Group of (not necessarily 10) deciles ordered by their rank.
 
     Attributes:
         deciles: List of deciles, ordered from lowest to highest.
@@ -99,12 +99,14 @@ class DecileList:
     def __init__(self, deciles: list[Decile], order_col: str, cutpoints: list[float]):
 
         # Verify there are list elements
-        if len(deciles) != 10:
-            raise ValueError("deciles must be a list of exactly 10 decile")
+        if len(deciles) == 0:
+            raise ValueError("deciles must be a list of with deciles")
 
-        # Verify that deciles are ranked 1 to 10
-        if not all(d.rank == i + 1 for i, d in enumerate(deciles)):
-            raise ValueError("Deciles must be ordered from 1 to 10")
+        # Verify that deciles are ranked in increasing order
+        if not all(
+            deciles[i].rank <= deciles[i + 1].rank for i in range(len(deciles) - 1)
+        ):
+            raise ValueError("Deciles must be ordered by rank")
 
         # Verify that deciles are ordered from lowest to highest in terms of order_col
         if not all(
@@ -122,12 +124,31 @@ class DecileList:
         """Iterator over deciles."""
         return iter(self.deciles)
 
-    def __getitem__(self, key: int | str) -> Decile:
-        """Get a decile by position (int) or name (str)."""
+    def __getitem__(self, key: str | list[str] | int | slice) -> "Decile | DecileList":
+        """Get a decile or subset of deciles by position (int, slice) or name (str, list[str])."""
         if isinstance(key, int):
             return self.deciles[key]
+
         elif isinstance(key, str):
             return next(d for d in self if d.name == key)
+
+        elif isinstance(key, list):
+            # Verify all names are in the deciles (dont silently ignore some items)
+            if not all(n in self.decile_names for n in key):
+                raise ValueError("Some decile names not found")
+
+            return DecileList(
+                deciles=[d for d in self if d.name in key],
+                order_col=self.order_col,
+                cutpoints=self.cutpoints,
+            )
+
+        elif isinstance(key, slice):
+            return DecileList(
+                deciles=self.deciles[key],
+                order_col=self.order_col,
+                cutpoints=self.cutpoints,
+            )
         else:
             raise TypeError(f"Unsupported key type: {type(key)}")
 
@@ -168,6 +189,10 @@ class DecileList:
     def n_customers(self) -> int:
         """Get the number of customers across all deciles."""
         return sum(d.n_customers for d in self)
+
+    @property
+    def decile_names(self) -> list[str]:
+        return [d.name for d in self]
 
     def summary(self) -> pd.DataFrame:
         """Get summary statistics for each decile in a single pd.DataFrame."""
