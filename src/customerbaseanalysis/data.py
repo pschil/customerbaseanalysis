@@ -636,15 +636,19 @@ class CustomerSummary(CustomerPropertiesMixin):
             {
                 "n_customers": [self.n_customers],
                 "n_orders": [self.n_orders],
-                "sum_revenue": [self.sum_revenue],
-                "sum_profit": [self.sum_profit],
+                "sum_revenue": [int(self.sum_revenue)],
+                "sum_profit": [int(self.sum_profit)],
                 # profit decomposition
-                "aof": [self.aof],
-                "aov": [self.aov],
-                "aom": [self.aom],
+                "aof": [round(self.aof, 2)],
+                "aov": [round(self.aov, 2)],
+                "aom": [round(self.aom, 2)],
                 # per customer
-                "avg_revenue_per_customer": [self.sum_revenue / self.n_customers],
-                "avg_profit_per_customer": [self.sum_profit / self.n_customers],
-                "avg_orders_per_customer": [self.n_orders / self.n_customers],
+                "avg_revenue_per_customer": [
+                    round(self.sum_revenue / self.n_customers, 1)
+                ],
+                "avg_profit_per_customer": [
+                    round(self.sum_profit / self.n_customers, 1)
+                ],
+                "avg_orders_per_customer": [round(self.n_orders / self.n_customers, 2)],
             }
-        ).round(2)
+        )

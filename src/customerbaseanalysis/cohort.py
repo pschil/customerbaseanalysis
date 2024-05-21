@@ -108,6 +108,13 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
         )
         return self.select_customers(n_customer_ids)
 
+    def select_customers_decile(
+        self, splitter: DecileSplitter, key: str | list[str] | int | slice
+    ) -> "Cohort":
+        """Cohort of customers in decile(s) selected with `key` from DecileList."""
+        deciles = self.to_deciles(splitter)
+        return self.select_customers(deciles[key].customer_ids)
+
     def select_orders_nth(self, lessthan=None, morethan=None, exactly=None) -> "Cohort":
         """Cohort with orders lessthan/morethan/exactly the n-th of each customer"""
         return Cohort(
@@ -116,6 +123,14 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
             order_summary=self.order_summary.select_nth(
                 lessthan=lessthan, morethan=morethan, exactly=exactly
             ),
+        )
+
+    def select_orders_until(self, ts: str | pd.Timestamp):
+        """Cohort with orders until a given timestamp."""
+        return Cohort(
+            name=self.name,
+            acq_period=self.acq_period,
+            order_summary=self.order_summary.select_until(ts=ts),
         )
 
     def drop_otb(self) -> "Cohort":
@@ -178,6 +193,10 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
                         name="period_name", fn_id=lambda _, fde: fde.data.name
                     ),
                     ForeachIdMapping(name="period", fn_id=lambda _, fde: fde.metainfo),
+                    ForeachIdMapping(
+                        name="period_start_time",
+                        fn_id=lambda _, fde: fde.metainfo.start_time,
+                    ),
                 ],
             )
         else:

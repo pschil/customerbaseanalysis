@@ -22,6 +22,12 @@ __all__ = [
     "DecileList",
 ]
 
+# ordered decile dtypes with default names ("Decile x")
+# useful in plots
+default_decile_dtype = pd.CategoricalDtype(
+    categories=[f"Decile {i}" for i in range(1, 11)], ordered=True
+)
+
 
 class Decile(AccessCustomerSummaryMixin):
     """A group of customers which forms a single decile.
@@ -250,10 +256,20 @@ class DecileList:
                 id_mappings=[
                     ForeachIdMapping(name="decile_n", fn_id=lambda i, _: i),
                     ForeachIdMapping(
-                        fn_id=lambda _, fde: fde.data.rank, name="decile_rank"
+                        name="decile_rank",
+                        fn_id=lambda _, fde: fde.data.rank,
                     ),
                     ForeachIdMapping(
-                        fn_id=lambda _, fde: fde.data.name, name="decile_name"
+                        name="decile_name",
+                        fn_id=lambda _, fde: fde.data.name,
+                    ),
+                    ForeachIdMapping(
+                        name="decile_dtype",
+                        fn_id=lambda _, fde: pd.Categorical(
+                            # dtype only exists for default name
+                            values=[f"Decile {fde.data.rank}"],
+                            dtype=default_decile_dtype,
+                        ),
                     ),
                 ],
             )
