@@ -132,7 +132,7 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
             acq_period=self.acq_period,
             order_summary=self.order_summary.select_until(ts=ts),
         )
-    
+
     def select_orders_sincealive(self, timedelta: str | pd.Timedelta) -> "Cohort":
         """Cohort with orders within `timedelta` of first order of each customer."""
         return Cohort(
@@ -545,6 +545,37 @@ class CohortList:
             .sort_values("first_order")
             .reset_index(drop=True)
         )
+
+    def plot_periods_stackedbar(
+        self,
+        periods: str | pd.PeriodIndex,
+        fn: Callable[[PeriodData], float],
+        bar_fmt: str | Callable[[float], str] = "%g",
+        **kwargs,
+    ) -> plt.Axes:
+        """Bar plot where the value for each cohort and period is produced by `fn`."""
+        df_plot = self.foreach_cohort(df=lambda c: c.foreach_period(periods, df=fn))
+        # fn returns float which is saved in column named 0 (int, not str)
+        df_plot = df_plot.rename(columns={0: "metric"})
+        df_plot = df_plot.pivot(
+            index="period",
+            columns="cohort_name",
+            values="metric",
+        ).sort_index()
+
+        ax = df_plot.plot.bar(stacked=True, **kwargs)
+
+        # # Add totals on top (last container)
+        # total = df_plot.sum(axis=1)
+        # sum values in containers in case ordering is different from df_plot
+        totals = pd.DataFrame([barc.datavalues for barc in ax.containers]).sum()
+        ax.bar_label(ax.containers[-1], labels=totals, label_type="edge")
+
+        # Add value of each bar patch
+        for cont_i in ax.containers:
+            ax.bar_label(cont_i, fmt=bar_fmt, label_type="center")
+
+        return ax
 
 
 class CohortSplitter(abc.ABC):
