@@ -125,12 +125,20 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
             ),
         )
 
-    def select_orders_until(self, ts: str | pd.Timestamp):
+    def select_orders_until(self, ts: str | pd.Timestamp) -> "Cohort":
         """Cohort with orders until a given timestamp."""
         return Cohort(
             name=self.name,
             acq_period=self.acq_period,
             order_summary=self.order_summary.select_until(ts=ts),
+        )
+    
+    def select_orders_sincealive(self, timedelta: str | pd.Timedelta) -> "Cohort":
+        """Cohort with orders within `timedelta` of first order of each customer."""
+        return Cohort(
+            name=self.name,
+            acq_period=self.acq_period,
+            order_summary=self.order_summary.select_since_alive(timedelta=timedelta),
         )
 
     def drop_otb(self) -> "Cohort":

@@ -332,6 +332,33 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         """Select all orders after the first order of each customer."""
         return self.select_nth(morethan=1)
 
+    def select_since_alive(self, timedelta: str | pd.Timedelta) -> "OrderSummary":
+        """Select all orders within timedelta (incl) since customer came alive.
+
+        For each customer, select all orders that fall in the time interval
+        `[time_first_order, time_first_order+timedelta]`.
+        """
+
+        timedelta = pd.to_timedelta(timedelta)
+        if timedelta <= pd.Timedelta(0):
+            raise ValueError("timedelta must be positive")
+
+        # For each customer, find timestamp where to cut by adding timedelta to
+        # time of first order
+        timings = self.data.groupby("customer_id").agg(
+            time_first_order=("timestamp", "min")
+        )
+        timings["time_upper"] = timings["time_first_order"] + timedelta
+
+        # Instead of writing time_upper to every order, do boolean masking/subsetting
+        # which avoids creating a copy of self.data
+        map_upper = timings["time_upper"].to_dict()
+        return OrderSummary(
+            data=self.data[
+                self.data["timestamp"] <= self.data["customer_id"].map(map_upper)
+            ]
+        )
+
     def drop(
         self,
         customer_ids: Iterable[str] | None = None,
