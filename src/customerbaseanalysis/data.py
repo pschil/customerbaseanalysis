@@ -531,6 +531,16 @@ class CustomerSummary(CustomerPropertiesMixin):
     def sum_profit(self) -> float:
         """The total profit across all customers."""
         return float(self.data["total_order_profit"].sum())
+    
+    @property
+    def avg_revenue(self) -> float:
+        """Average revenue across customers."""
+        return float(self.sum_revenue / self.n_customers)
+    
+    @property
+    def avg_profit(self) -> float:
+        """Average profit across customers."""
+        return float(self.sum_profit / self.n_customers)
 
     @property
     def time_first_order(self) -> pd.Timestamp:

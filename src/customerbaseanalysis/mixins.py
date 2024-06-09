@@ -104,6 +104,16 @@ class AccessCustomerSummaryMixin:
     def sum_profit(self) -> float:
         """Total profit of all orders."""
         return self.customer_summary.sum_profit
+    
+    @property
+    def avg_revenue(self) -> float:
+        """Average revenue per customer."""
+        return self.customer_summary.avg_revenue
+    
+    @property
+    def avg_profit(self) -> float:
+        """Average profit per customer."""
+        return self.customer_summary.avg_profit
 
     @property
     def aof(self) -> float:

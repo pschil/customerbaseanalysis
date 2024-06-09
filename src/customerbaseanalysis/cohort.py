@@ -79,6 +79,12 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
         """The timestamp when the last customer of this cohort was acquired."""
         return self.df_acquisition["time_first_order"].max()
 
+    def rename(self, name: str) -> "Cohort":
+        """Return a copy of the cohort with a new name."""
+        return Cohort(
+            name=name, acq_period=self.acq_period, order_summary=self.order_summary
+        )
+
     def summary(self) -> pd.DataFrame:
         """Summary statistics of the cohort."""
         df = self.customer_summary.summary()
@@ -89,10 +95,7 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
 
     def select_customers(self, customer_ids: Iterable) -> "Cohort":
         """Cohort of customers with the given customer_ids."""
-        # Verify all customer_ids are in the cohort
-        if not set(customer_ids).issubset(self.customer_ids):
-            raise ValueError("Not all customer_ids are in the cohort.")
-
+        
         return Cohort(
             name=self.name,
             acq_period=self.acq_period,
@@ -108,7 +111,7 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
         )
         return self.select_customers(n_customer_ids)
 
-    def select_customers_decile(
+    def select_deciles(
         self, splitter: DecileSplitter, key: str | list[str] | int | slice
     ) -> "Cohort":
         """Cohort of customers in decile(s) selected with `key` from DecileList."""
@@ -373,7 +376,7 @@ class CohortList:
             raise ValueError("All cohort names must be unique.")
         # Verify ordered by acquisition period
         if not all(
-            cohorts[i].acq_period <= cohorts[i + 1].acq_period
+            cohorts[i].acq_period.start_time <= cohorts[i + 1].acq_period.start_time
             for i in range(len(cohorts) - 1)
         ):
             raise ValueError("Cohorts must be ordered (<=) by acquisition period.")
@@ -472,6 +475,7 @@ class CohortList:
 
     def select_period_acquired(
         self,
+        within: str | pd.Period | None = None,
         lower: str | pd.Period | None = None,
         upper: str | pd.Period | None = None,
         between: tuple[str, str] | tuple[pd.Period, pd.Period] | None = None,
@@ -479,15 +483,32 @@ class CohortList:
         """Select cohorts based on the acquisition period.
 
         Args:
+            within: Cohorts acquired within this period (inclusive).
             lower: Cohorts acquired on or after this period (inclusive).
             upper: Cohorts acquired on or before this period (inclusive).
             between: Cohorts acquired between these periods (inclusive).
         """
         # Verify only one given
-        if sum([lower is not None, upper is not None, between is not None]) != 1:
-            raise ValueError("Exactly one of lower, upper, between may be given.")
+        num_given = sum(
+            [
+                within is not None,
+                lower is not None,
+                upper is not None,
+                between is not None,
+            ]
+        )
+        if num_given != 1:
+            raise ValueError("Exactly one of parameter may be given.")
 
-        if lower is not None:
+        if within is not None:
+            within = pd.Period(within)
+            cohorts = [
+                c
+                for c in self
+                if c.acq_period.start_time >= within.start_time
+                and c.acq_period.end_time <= within.end_time
+            ]
+        elif lower is not None:
             lower = pd.Period(lower)
             cohorts = [c for c in self if c.acq_period >= lower]
         elif upper is not None:
@@ -501,6 +522,12 @@ class CohortList:
             cohorts = [c for c in self if between[0] <= c.acq_period <= between[1]]
 
         return CohortList(cohorts=cohorts)
+
+    def select_deciles(
+        self, splitter: DecileSplitter, key: str | list[str] | int
+    ) -> "CohortList":
+        """From each cohort, select customers in the decile(s) selected with `key`."""
+        return CohortList([c.select_deciles(splitter=splitter, key=key) for c in self])
 
     def foreach_cohort(
         self,
