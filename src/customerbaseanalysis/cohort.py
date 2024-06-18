@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from customerbaseanalysis.perioddata import PeriodData
 from customerbaseanalysis.decile import DecileList, DecileSplitter
 from customerbaseanalysis.data import OrderSummary, CustomerSummary
-from customerbaseanalysis.ctime import CohortTime, CalendarTime
+from customerbaseanalysis.ctime import CohortTime, CalendarTime, CustomerTime
 from customerbaseanalysis.mixins import (
     AccessCustomerSummaryMixin,
     AccessOrderSummaryPropertiesMixin,
@@ -95,7 +95,7 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
 
     def select_customers(self, customer_ids: Iterable) -> "Cohort":
         """Cohort of customers with the given customer_ids."""
-        
+
         return Cohort(
             name=self.name,
             acq_period=self.acq_period,
@@ -325,6 +325,42 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
             )
 
         return foreach(get_orders_until(), **kwargs)
+
+    def foreach_orders_sincealive(
+        self,
+        deltas: CustomerTime,
+        df: Callable[[OrderSummary, Any], pd.DataFrame | dict] | None = None,
+        asis: Callable[[OrderSummary, Any], Any] | None = None,
+        **kwargs,
+    ) -> pd.DataFrame | dict[str, Any]:
+        """Subset to orders within `deltas` of first order of each customer."""
+
+        verify_single_df_asis(df=df, asis=asis)
+
+        def get_orders_sincealive():
+            for td in deltas.deltas:
+                yield ForeachDataElement(
+                    data=self.order_summary.select_since_alive(timedelta=td),
+                    metainfo=td,
+                )
+
+        if df is not None:
+            foreach = ForeachDF(
+                fn_df=df,
+                id_mappings=[
+                    ForeachIdMapping(name="sincealive_n", fn_id=lambda i, _: i),
+                    ForeachIdMapping(
+                        name="sincealive_delta", fn_id=lambda _, fde: fde.metainfo
+                    ),
+                ],
+            )
+        else:
+            foreach = ForeachAsIs(
+                fn_asis=asis,
+                key_mapping=ForeachKeyMapping(fn_key=lambda _, fde: fde.metainfo),
+            )
+
+        return foreach(get_orders_sincealive(), **kwargs)
 
     # def plot_periods(
     #     self, periods: str, fn: Callable[[PeriodData, Any], float], ax=None, **kwargs

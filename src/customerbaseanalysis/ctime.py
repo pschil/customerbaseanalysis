@@ -3,7 +3,7 @@
 import abc
 import pandas as pd
 
-__all__ = ["CalendarTime", "CohortTime"]
+__all__ = ["CalendarTime", "CohortTime", "CustomerTime"]
 
 
 class CTime(abc.ABC):
@@ -32,6 +32,38 @@ class CalendarTime(CTime):
             return self.timestamps
 
 
+class CustomerTime(CTime):
+    """Timedeltas since customers came alive."""
+
+    deltas: list[pd.Timedelta]
+
+    def __init__(self, deltas: list[pd.Timedelta]) -> None:
+        self.deltas = deltas
+
+    @classmethod
+    def from_deltas(cls, deltas: list[str] | list[pd.Timedelta]) -> "CustomerTime":
+        """Create CustomerTime object from time deltas."""
+        if isinstance(deltas, str):
+            raise ValueError("Single string not allowed for delta.")
+
+        return cls(deltas=[pd.to_timedelta(d) for d in deltas])
+
+    @classmethod
+    def from_freq(cls, freq: str | pd.Timedelta, n: int | list[int]) -> "CustomerTime":
+        """Create CustomerTime object from frequency and n."""
+        # build deltas from freq and n
+        if isinstance(n, int):
+            n = list(range(1, n + 1))
+
+        freq = pd.to_timedelta(freq)
+
+        return cls(deltas=[freq * n_i for n_i in n])
+
+    def to_timestamps(self, start: str | pd.Timestamp) -> list[pd.Timestamp]:
+        """Not really useful anywhere."""
+        raise NotImplementedError
+
+
 class CohortTime(CTime):
     """Generate timestamps based on start of cohort.
 
@@ -50,7 +82,6 @@ class CohortTime(CTime):
         n: int | list[int] | None = None,
         end: int | str | pd.Timestamp | None = None,
     ) -> None:
-
         # Either n or max must be provided (freq alone is not enough)
         if n is None and end is None:
             raise ValueError("Either 'n' or 'max' must be provided.")

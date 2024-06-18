@@ -340,7 +340,7 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
         """
 
         timedelta = pd.to_timedelta(timedelta)
-        if timedelta <= pd.Timedelta(0):
+        if timedelta < pd.Timedelta(0):
             raise ValueError("timedelta must be positive")
 
         # For each customer, find timestamp where to cut by adding timedelta to
