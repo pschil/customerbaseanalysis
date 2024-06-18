@@ -282,25 +282,19 @@ class Cohort(AccessCustomerSummaryMixin, AccessOrderSummaryPropertiesMixin):
 
         return foreach(get_rolling_period_data(), **kwargs)
 
-    def foreach_orders(
+    def foreach_orders_until(
         self,
-        until: CalendarTime | CohortTime,
-        # after: CalendarTime | CohortTime | None = None,
-        # on: CalendarTime | CohortTime | None = None,
+        ctime: CalendarTime | CohortTime,
         df: Callable[[OrderSummary, Any], pd.DataFrame | dict] | None = None,
         asis: Callable[[OrderSummary, Any], Any] | None = None,
         **kwargs,
     ) -> pd.DataFrame | dict[str, Any]:
-        """Subset orders from start to `until` and apply `df` or `asis` on each subset."""
+        """Subset orders from start to `ctime` and apply `df` or `asis` on each subset."""
+        # Further future methods: foreach_orders_until(), foreach_orders_on()
 
         verify_single_df_asis(df=df, asis=asis)
 
-        # # Verify only one of until, after, on is not None
-        # if sum([until is not None, after is not None, on is not None]) != 1:
-        #     raise ValueError("Exactly one of until, after, on must be not None.")
-
-        # c_time = until or after or on
-        timestamps = until.to_timestamps(start=self.time_first_acquisition)
+        timestamps = ctime.to_timestamps(start=self.time_first_acquisition)
 
         def get_orders_until():
             for ts in timestamps:
