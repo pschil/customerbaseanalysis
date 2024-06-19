@@ -3,7 +3,7 @@
 from typing import Callable, Iterable
 
 from matplotlib import pyplot as plt
-import pandas as pd
+import modin.pandas as pd
 
 from customerbaseanalysis.mixins import (
     CustomerPropertiesMixin,

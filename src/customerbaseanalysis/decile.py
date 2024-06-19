@@ -3,7 +3,7 @@
 import abc
 import copy
 from typing import Iterable, Callable, Any
-import pandas as pd
+import modin.pandas as pd
 from customerbaseanalysis.data import CustomerSummary
 from customerbaseanalysis.mixins import AccessCustomerSummaryMixin
 from customerbaseanalysis.foreach import (

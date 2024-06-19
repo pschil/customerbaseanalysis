@@ -1,7 +1,7 @@
 """Datetime operations in calendar- and cohort-time."""
 
 import abc
-import pandas as pd
+import modin.pandas as pd
 
 __all__ = ["CalendarTime", "CohortTime", "CustomerTime"]
 

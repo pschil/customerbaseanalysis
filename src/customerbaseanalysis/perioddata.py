@@ -1,6 +1,6 @@
 """Data of a single period."""
 
-import pandas as pd
+import modin.pandas as pd
 
 from customerbaseanalysis.data import CustomerSummary, OrderSummary
 from customerbaseanalysis.decile import DecileSplitter, DecileList

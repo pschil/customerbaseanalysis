@@ -1,5 +1,5 @@
 from importlib.resources import files
-import pandas as pd
+import modin.pandas as pd
 
 
 def _load_dataset(filename: str) -> pd.DataFrame:

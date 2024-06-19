@@ -8,7 +8,7 @@ import abc
 from dataclasses import dataclass
 from collections.abc import Hashable
 from typing import Any, Callable, Iterator
-import pandas as pd
+import modin.pandas as pd
 
 
 @dataclass

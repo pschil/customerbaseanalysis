@@ -1,7 +1,7 @@
 """Mixins to use in other classes."""
 
 from typing import Callable
-import pandas as pd
+import modin.pandas as pd
 from matplotlib import pyplot as plt
 
 

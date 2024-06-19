@@ -4,7 +4,7 @@ import copy
 import abc
 from typing import Iterable, Callable, Any
 
-import pandas as pd
+import modin.pandas as pd
 from matplotlib import pyplot as plt
 
 from customerbaseanalysis.perioddata import PeriodData
