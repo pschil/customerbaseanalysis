@@ -85,7 +85,10 @@ class ForeachAsIs(ForeachApplier):
         self.results[key_i] = self.fn_asis(elem_i.data, **kwargs)
 
     def _collect(self) -> dict:
-        return self.results
+        if len(self.results) == 0:
+            return {}
+        else:
+            return self.results
 
 
 class ForeachDF(ForeachApplier):
@@ -124,7 +127,10 @@ class ForeachDF(ForeachApplier):
         self.results.append(result_i)
 
     def _collect(self):
-        return pd.concat(self.results, ignore_index=True)
+        if len(self.results) == 0:
+            return pd.DataFrame()
+        else:
+            return pd.concat(self.results, ignore_index=True)
 
 
 def verify_single_df_asis(df: Callable, asis: Callable) -> None:
