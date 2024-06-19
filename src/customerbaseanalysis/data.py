@@ -202,11 +202,11 @@ class OrderSummary(OrderPropertiesMixin, CustomerPropertiesMixin):
 
         # group by customer_id and timestamp to also have them in the resulting table
         order_summary = basket.data.groupby(
-            ["order_id", "customer_id", "timestamp"], as_index=False
+            ["order_id", "customer_id", "timestamp"], as_index=True,
         ).agg(
             revenue=("revenue", "sum"),
             profit=("profit", "sum"),
-        )
+        ).reset_index()
 
         # Calculate profit percentage of each order
         order_summary["perc_profit_margin"] = (
@@ -499,7 +499,7 @@ class CustomerSummary(CustomerPropertiesMixin):
         """Summarize orders of each customer"""
 
         customer_summary = order_summary.data.groupby(
-            "customer_id", as_index=False
+            "customer_id", as_index=True,
         ).agg(
             time_first_order=("timestamp", "min"),
             time_last_order=("timestamp", "max"),
@@ -510,7 +510,7 @@ class CustomerSummary(CustomerPropertiesMixin):
             total_order_profit=("profit", "sum"),
             mean_order_profit=("profit", "mean"),
             median_order_profit=("profit", "median"),
-        )
+        ).reset_index()
         customer_summary["perc_profit_margin"] = (
             customer_summary["total_order_profit"]
             / customer_summary["total_order_revenue"]
