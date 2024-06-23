@@ -579,8 +579,12 @@ class CohortList:
                 id_mappings=[
                     ForeachIdMapping(name="cohort_n", fn_id=lambda i, _: i),
                     ForeachIdMapping(
-                        name="cohort_time_acq",
+                        name="cohort_time_first",
                         fn_id=lambda _, fde: fde.data.time_first_acquisition,
+                    ),
+                    ForeachIdMapping(
+                        name="cohort_period_acq",
+                        fn_id=lambda _, fde: fde.data.acq_period,
                     ),
                     ForeachIdMapping(
                         name="cohort_name", fn_id=lambda _, fde: fde.metainfo
